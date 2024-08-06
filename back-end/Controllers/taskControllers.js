@@ -1,4 +1,4 @@
-// // Controllers/taskControllers.js
+
 // const pool = require('../Config/db'); // Adjust the path as necessary
 
 // // Create a new task
@@ -16,10 +16,10 @@
 //   }
 // };
 
-// // Get all tasks
+// // Get all tasks (excluding soft-deleted ones)
 // const getAllTasks = async (req, res) => {
 //   try {
-//     const result = await pool.query('SELECT * FROM tasks');
+//     const result = await pool.query('SELECT * FROM tasks WHERE is_deleted IS NULL');
 //     res.json({ tasks: result.rows });
 //   } catch (error) {
 //     console.error(error);
@@ -51,7 +51,7 @@
 //   try {
 //     const { id } = req.params;
 //     const result = await pool.query(
-//       'UPDATE tasks SET deleted_at = NOW() WHERE id = $1 RETURNING *',
+//       'UPDATE tasks SET is_deleted = NOW() WHERE id = $1 RETURNING *',
 //       [id]
 //     );
 //     if (result.rows.length === 0) {
@@ -106,11 +106,11 @@ const updateTask = async (req, res) => {
     const { id } = req.params;
     const { title, description } = req.body;
     const result = await pool.query(
-      'UPDATE tasks SET title = $1, description = $2 WHERE id = $3 RETURNING *',
+      'UPDATE tasks SET title = $1, description = $2 WHERE id = $3 AND is_deleted IS NULL RETURNING *',
       [title, description, id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found or has been deleted' });
     }
     res.json({ message: 'Task updated successfully', task: result.rows[0] });
   } catch (error) {
@@ -124,11 +124,11 @@ const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      'UPDATE tasks SET is_deleted = NOW() WHERE id = $1 RETURNING *',
+      'UPDATE tasks SET is_deleted = NOW() WHERE id = $1 AND is_deleted IS NULL RETURNING *',
       [id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Task not found' });
+      return res.status(404).json({ error: 'Task not found or has already been deleted' });
     }
     res.json({ message: 'Task deleted successfully', task: result.rows[0] });
   } catch (error) {
